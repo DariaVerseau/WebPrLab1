@@ -15,29 +15,29 @@ function FallingFood() {
   }, []);
 
   useEffect(() => {
-    // Начальные продукты
-    const initialFoods = Array.from({ length: 10 }, (_, index) => {
-      const food = createFood();
-      food.startY = -(index * 100);
-      food.delay = index * 0.4;
-      return food;
+  const initialFoods = Array.from({ length: 10 }, (_, index) => {
+    const food = createFood();
+    food.startY = -(index * 100);
+    food.delay = index * 0.4;
+    return food;
+  });
+  
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  setFoods(initialFoods);
+
+  const interval = setInterval(() => {
+    const newFood = createFood();
+    newFood.startY = -60;
+    newFood.delay = 0;
+    
+    setFoods(prev => {
+      const filtered = prev.filter(f => Date.now() - f.id < f.duration * 1000);
+      return [...filtered, newFood].slice(-15);
     });
-    setFoods(initialFoods);
+  }, 400);
 
-    // Непрерывная генерация
-    const interval = setInterval(() => {
-      const newFood = createFood();
-      newFood.startY = -60;
-      newFood.delay = 0;
-      
-      setFoods(prev => {
-        const filtered = prev.filter(f => Date.now() - f.id < f.duration * 1000);
-        return [...filtered, newFood].slice(-15);
-      });
-    }, 400);
-
-    return () => clearInterval(interval);
-  }, [createFood]);
+  return () => clearInterval(interval);
+}, [createFood]);
 
   return (
     <div className="falling-food-container">

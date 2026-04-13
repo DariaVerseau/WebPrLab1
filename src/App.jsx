@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import './App.css';  
 
@@ -15,18 +15,7 @@ import ActivitySelect from './components/ActivitySelect';
 import FormButtons from './components/FormButtons';
 import ResultBlock from './components/ResultBlock';
 import FallingFood from './components/FallingFood';
-
-// Activity coefficients
-
-// Food SVG components
-
-// Validation functions
-
-// Calculation functions
-
-// Food data
-
-// Styles
+import CaloriePopup from './components/CaloriePopup';
 
 function App() {
   const [showPopup, setShowPopup] = useState(false);
@@ -46,19 +35,22 @@ function App() {
   const [resultTDEE, setResultTDEE] = useState(0);
 
   // Validate on change
+  // Выносим вычисления в useMemo (не вызывает рендер)
+  const ageValidation = useMemo(() => validateAge(age), [age]);
+  const heightValidation = useMemo(() => validateHeight(height), [height]);
+  const weightValidation = useMemo(() => validateWeight(weight), [weight]);
+
+  // Один эффект только для обновления ошибок (минимум вызовов setState)
   useEffect(() => {
-    const ageValidation = validateAge(age);
     setAgeError(ageValidation.error);
-    
-    const heightValidation = validateHeight(height);
     setHeightError(heightValidation.error);
-    
-    const weightValidation = validateWeight(weight);
     setWeightError(weightValidation.error);
-    
-    const valid = ageValidation.valid && heightValidation.valid && weightValidation.valid;
-    setIsFormValid(valid);
-  }, [age, height, weight]);
+    setIsFormValid(
+      ageValidation.valid && 
+      heightValidation.valid && 
+      weightValidation.valid
+    );
+  }, [ageValidation, heightValidation, weightValidation]);
 
   // Auto-correct age value
   const handleAgeChange = (e) => {
@@ -147,6 +139,7 @@ function App() {
           <AgeInput value={age} onChange={handleAgeChange} error={ageError} />
           <HeightInput value={height} onChange={handleHeightChange} error={heightError} />
           <WeightInput value={weight} onChange={handleWeightChange} error={weightError} />
+          <CaloriePopup show={showPopup} onClose={() => setShowPopup(false)} />
           <ActivitySelect value={activityLevel} onChange={(e) => setActivityLevel(e.target.value)} />
           <FormButtons onCalculate={handleCalculate} onClear={handleClear} isDisabled={!isFormValid} />
         </div>

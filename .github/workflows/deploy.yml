@@ -1,0 +1,133 @@
+name: Build and Deploy Calorie Counter
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Глобальные переменные окружения
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ===== ЗАДАНИЕ 1: Сборка и тесты =====
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout кода
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Установка Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Установка зависимостей
+        run: npm ci
+
+      - name: 🔍 Линтинг кода
+        run: npm run lint --if-present
+
+      - name: 🧪 Запуск тестов (если есть)
+        run: npm test --if-present
+
+      - name: 🏗️ Сборка приложения
+        run: npm run build
+
+      - name: 📁 Сохранение артефактов сборки
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+
+  # ===== ЗАДАНИЕ 2: Сборка и публикация Docker-образа =====
+  build-and-push:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: 📥 Checkout кода
+        uses: actions/checkout@v4
+
+      - name: 🔐 Авторизация в GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Генерация метаданных для образа
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            latest
+
+      - name: 🐳 Сборка и публикация Docker-образа
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===== ЗАДАНИЕ 3: Деплой на удалённый сервер =====
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout кода
+        uses: actions/checkout@v4
+
+      - name: 🔐 Настройка SSH-ключа
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: 🚀 Деплой через SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
+            # Создаём директорию для приложения
+            mkdir -p /opt/calorie-counter
+            
+            # Копируем docker-compose.yml (если используется)
+            echo 'version: "3.8"
+            services:
+              app:
+                image: ghcr.io/${{ github.repository }}:latest
+                ports:
+                  - "80:80"
+                restart: unless-stopped
+                healthcheck:
+                  test: ["CMD", "curl", "-f", "http://localhost"]
+                  interval: 30s
+                  timeout: 10s
+                  retries: 3
+            ' > /opt/calorie-counter/docker-compose.yml
+            
+            # Авторизация в GHCR и запуск
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            cd /opt/calorie-counter
+            docker-compose pull
+            docker-compose up -d
+            docker image prune -f
+          EOF
+
+      - name: ✅ Проверка деплоя
+        run: |
+          curl -f http://${{ secrets.DEPLOY_HOST }}/health || exit 1

@@ -2,9 +2,9 @@ name: Build and Deploy Calorie Counter
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 # Глобальные переменные окружения
 env:
@@ -22,8 +22,8 @@ jobs:
       - name: ⚙️ Установка Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: 📦 Установка зависимостей
         run: npm ci
@@ -47,33 +47,40 @@ jobs:
   build-and-push:
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
       packages: write
-    
     steps:
       - name: 📥 Checkout кода
         uses: actions/checkout@v4
 
+      # 1. Настраиваем QEMU (для поддержки разных архитектур, опционально но полезно)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # 2. Настраиваем Buildx (создает правильный драйвер)
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: 🔐 Авторизация в GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🏷️ Генерация метаданных для образа
+      - name: 🏷️ Метаданные образа
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ghcr.io/${{ github.repository }}
           tags: |
-            type=sha,prefix=
             type=ref,event=branch
+            type=sha,prefix=
             latest
 
-      - name: 🐳 Сборка и публикация Docker-образа
+      - name: 🐳 Сборка и публикация образа
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -89,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
-    
+
     steps:
       - name: 📥 Checkout кода
         uses: actions/checkout@v4

@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom/client';
+import React, { useState, useEffect, useMemo } from 'react';
+
 import './App.css';  
 
-// ✅ Импортируем утилиты
 import { validateAge, validateHeight, validateWeight } from './utils/validation';
 import { calculateBMR, calculateTDEE, ACTIVITY_COEFFICIENTS } from './utils/calculations';
 
-// ✅ Импортируем компоненты формы
 import GenderSelect from './components/GenderSelect';
 import AgeInput from './components/AgeInput';
 import HeightInput from './components/HeightInput';
@@ -130,7 +128,7 @@ function App() {
   return (
     <>
       <FallingFood />
-
+      <CaloriePopup show={showPopup} onClose={() => setShowPopup(false)} />
       <div className="container">
         <h1 className="app-title">🔥 Счетчик калорий</h1>
         
@@ -139,7 +137,6 @@ function App() {
           <AgeInput value={age} onChange={handleAgeChange} error={ageError} />
           <HeightInput value={height} onChange={handleHeightChange} error={heightError} />
           <WeightInput value={weight} onChange={handleWeightChange} error={weightError} />
-          <CaloriePopup show={showPopup} onClose={() => setShowPopup(false)} />
           <ActivitySelect value={activityLevel} onChange={(e) => setActivityLevel(e.target.value)} />
           <FormButtons onCalculate={handleCalculate} onClear={handleClear} isDisabled={!isFormValid} />
         </div>

@@ -39,15 +39,18 @@ function App() {
   const weightValidation = useMemo(() => validateWeight(weight), [weight]);
 
   // Один эффект только для обновления ошибок (минимум вызовов setState)
-  useEffect(() => {
+    useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAgeError(ageValidation.error);
+    
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHeightError(heightValidation.error);
+    
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setWeightError(weightValidation.error);
-    setIsFormValid(
-      ageValidation.valid && 
-      heightValidation.valid && 
-      weightValidation.valid
-    );
+    
+    const valid = ageValidation.valid && heightValidation.valid && weightValidation.valid;
+    setIsFormValid(valid);
   }, [ageValidation, heightValidation, weightValidation]);
 
   // Auto-correct age value

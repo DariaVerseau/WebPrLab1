@@ -32,7 +32,6 @@ function App() {
   const [resultBMR, setResultBMR] = useState(0);
   const [resultTDEE, setResultTDEE] = useState(0);
 
-  // Validate on change
   // Выносим вычисления в useMemo (не вызывает рендер)
   const ageValidation = useMemo(() => validateAge(age), [age]);
   const heightValidation = useMemo(() => validateHeight(height), [height]);
